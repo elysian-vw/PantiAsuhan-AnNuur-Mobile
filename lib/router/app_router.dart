@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:annuur_mobile/providers/auth_provider.dart';
 import 'package:annuur_mobile/ui/screens/splash_screen.dart';
 import 'package:annuur_mobile/ui/screens/auth/login_screen.dart';
+import 'package:annuur_mobile/ui/screens/auth/register_screen.dart';
 import 'package:annuur_mobile/ui/screens/home/main_scaffold.dart';
 import 'package:annuur_mobile/ui/screens/donation/create_donation_screen.dart';
 import 'package:annuur_mobile/ui/screens/donation/donation_detail_screen.dart';
@@ -24,15 +25,16 @@ class AppRouter {
         final status = authProvider.status;
         final isAtSplash = state.matchedLocation == '/';
         final isAtLogin = state.matchedLocation == '/login';
+        final isAtRegister = state.matchedLocation == '/register';
 
         if (status == AuthStatus.initial) {
           return isAtSplash ? null : '/';
         }
         if (status == AuthStatus.unauthenticated) {
-          return isAtLogin ? null : '/login';
+          return (isAtLogin || isAtRegister) ? null : '/login';
         }
         if (status == AuthStatus.authenticated) {
-          if (isAtSplash || isAtLogin) return '/home';
+          if (isAtSplash || isAtLogin || isAtRegister) return '/home';
         }
         return null;
       },
@@ -41,6 +43,10 @@ class AppRouter {
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
           path: '/home',

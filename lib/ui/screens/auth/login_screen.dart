@@ -1,6 +1,7 @@
 // lib/ui/screens/auth/login_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:annuur_mobile/core/theme/app_theme.dart';
 import 'package:annuur_mobile/providers/auth_provider.dart';
@@ -204,6 +205,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             : const Text('Masuk'),
                       ),
                     ),
+
+                    const SizedBox(height: 16),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text('Belum memiliki akun? '),
+                        GestureDetector(
+                          onTap: () => context.push('/register'),
+                          child: Text(
+                            'Daftar Donatur Tetap',
+                            style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 32),
 
                     // Helper info card
