@@ -50,6 +50,7 @@ class ApiClient {
   ApiClient._();
 
   static http.Client _client = http.Client();
+  static Future<void> Function()? onUnauthorized;
 
   @visibleForTesting
   static void setClient(http.Client client) {
@@ -87,7 +88,15 @@ class ApiClient {
     return uri;
   }
 
-  static Map<String, dynamic> _decode(http.Response response) {
+  static Future<Map<String, dynamic>> _decode(
+    http.Response response, {
+    String? requestToken,
+  }) async {
+    if (response.statusCode == 401 &&
+        requestToken != null &&
+        requestToken == await AuthStorage.getToken()) {
+      await onUnauthorized?.call();
+    }
     late final Map<String, dynamic> body;
     try {
       final decoded = jsonDecode(response.body);
@@ -126,10 +135,14 @@ class ApiClient {
     Map<String, dynamic>? query,
     bool auth = false,
   }) async {
+    final headers = await _headers(auth: auth);
     final response = await _client
-        .get(_uri(path, query), headers: await _headers(auth: auth))
+        .get(_uri(path, query), headers: headers)
         .timeout(_timeout);
-    return _decode(response);
+    return _decode(
+      response,
+      requestToken: headers['Authorization']?.substring(7),
+    );
   }
 
   static Future<Map<String, dynamic>> post(
@@ -137,14 +150,14 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = false,
   }) async {
+    final headers = await _headers(auth: auth);
     final response = await _client
-        .post(
-          _uri(path),
-          headers: await _headers(auth: auth),
-          body: jsonEncode(body ?? {}),
-        )
+        .post(_uri(path), headers: headers, body: jsonEncode(body ?? {}))
         .timeout(_timeout);
-    return _decode(response);
+    return _decode(
+      response,
+      requestToken: headers['Authorization']?.substring(7),
+    );
   }
 
   static Future<Map<String, dynamic>> put(
@@ -152,14 +165,14 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = false,
   }) async {
+    final headers = await _headers(auth: auth);
     final response = await _client
-        .put(
-          _uri(path),
-          headers: await _headers(auth: auth),
-          body: jsonEncode(body ?? {}),
-        )
+        .put(_uri(path), headers: headers, body: jsonEncode(body ?? {}))
         .timeout(_timeout);
-    return _decode(response);
+    return _decode(
+      response,
+      requestToken: headers['Authorization']?.substring(7),
+    );
   }
 
   static Future<http.Response> getRaw(

@@ -9,6 +9,11 @@ class CashflowSummaryModel {
   final String totalPemasukanFormatted;
   final String totalPengeluaranFormatted;
   final String saldoFormatted;
+  final bool isProvisional;
+  final int unknownFeeCount;
+
+  String get calculationNotice =>
+      'Saldo sementara: $unknownFeeCount donasi online belum masuk penerimaan bersih dan saldo karena biaya belum tersedia, termasuk sebelum periode ini.';
 
   const CashflowSummaryModel({
     required this.month,
@@ -19,6 +24,8 @@ class CashflowSummaryModel {
     required this.totalPemasukanFormatted,
     required this.totalPengeluaranFormatted,
     required this.saldoFormatted,
+    this.isProvisional = false,
+    this.unknownFeeCount = 0,
   });
 
   factory CashflowSummaryModel.fromJson(Map<String, dynamic> json) =>
@@ -32,6 +39,8 @@ class CashflowSummaryModel {
         totalPengeluaranFormatted:
             json['total_pengeluaran_formatted'] as String,
         saldoFormatted: json['saldo_akhir_formatted'] as String,
+        isProvisional: json['is_provisional'] as bool? ?? false,
+        unknownFeeCount: json['unknown_fee_count'] as int? ?? 0,
       );
 }
 

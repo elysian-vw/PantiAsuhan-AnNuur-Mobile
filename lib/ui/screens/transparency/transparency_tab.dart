@@ -180,6 +180,11 @@ class TransparencyTab extends StatelessWidget {
 
               // Financial Cards
               if (cashflow != null) ...[
+                if (cashflow.isProvisional)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(cashflow.calculationNotice),
+                  ),
                 // Saldo Card
                 Container(
                   width: double.infinity,

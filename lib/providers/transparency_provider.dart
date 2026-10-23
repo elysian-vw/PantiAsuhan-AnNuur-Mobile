@@ -5,6 +5,18 @@ import 'package:annuur_mobile/data/models/transparency_models.dart';
 import 'package:annuur_mobile/data/repositories/transparency_repository.dart';
 
 class TransparencyProvider extends ChangeNotifier {
+  bool _disposed = false;
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   CashflowSummaryModel? _cashflow;
   List<ExpenseModel> _expenses = [];
   bool _loading = false;
@@ -45,14 +57,20 @@ class TransparencyProvider extends ChangeNotifier {
   void nextMonth() {
     int m = _selectedMonth + 1;
     int y = _selectedYear;
-    if (m > 12) { m = 1; y++; }
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
     loadForMonth(month: m, year: y);
   }
 
   void prevMonth() {
     int m = _selectedMonth - 1;
     int y = _selectedYear;
-    if (m < 1) { m = 12; y--; }
+    if (m < 1) {
+      m = 12;
+      y--;
+    }
     loadForMonth(month: m, year: y);
   }
 }

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:annuur_mobile/core/utils/payment_navigation.dart';
 import 'package:annuur_mobile/core/theme/app_theme.dart';
 import 'package:annuur_mobile/data/repositories/donation_repository.dart';
 import 'package:annuur_mobile/providers/donation_provider.dart';
@@ -11,11 +13,13 @@ import 'package:annuur_mobile/providers/donation_provider.dart';
 class PaymentWebviewScreen extends StatefulWidget {
   final String paymentUrl;
   final int donationId;
+  final String? returnUrl;
 
   const PaymentWebviewScreen({
     super.key,
     required this.paymentUrl,
     required this.donationId,
+    this.returnUrl,
   });
 
   @override
@@ -27,6 +31,8 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
   int _progress = 0;
   bool _isLoading = true;
   bool _checkingStatus = false;
+  bool _loadFailed = false;
+  bool _allowExit = false;
 
   @override
   void initState() {
@@ -37,40 +43,45 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (progress) {
+            if (!mounted) return;
             setState(() {
               _progress = progress;
             });
           },
           onPageStarted: (url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = true;
+              _loadFailed = false;
             });
-            _checkCallbackUrl(url);
           },
           onPageFinished: (url) {
+            if (!mounted) return;
             setState(() {
               _isLoading = false;
             });
-            _checkCallbackUrl(url);
           },
           onNavigationRequest: (request) {
-            _checkCallbackUrl(request.url);
+            if (isPaymentReturn(
+              request.url,
+              expectedReturnUrl: widget.returnUrl,
+            )) {
+              _handlePaymentFinished();
+              return NavigationDecision.prevent;
+            }
             return NavigationDecision.navigate;
+          },
+          onWebResourceError: (error) {
+            if (mounted && error.isForMainFrame == true) {
+              setState(() {
+                _loadFailed = true;
+                _isLoading = false;
+              });
+            }
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.paymentUrl));
-  }
-
-  void _checkCallbackUrl(String url) {
-    final lower = url.toLowerCase();
-    // Midtrans redirect keywords indicating completion
-    if (lower.contains('status_code=200') ||
-        lower.contains('transaction_status=settlement') ||
-        lower.contains('finish') ||
-        lower.contains('order_id=')) {
-      _handlePaymentFinished();
-    }
   }
 
   Future<void> _handlePaymentFinished() async {
@@ -105,7 +116,11 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
               color: success ? AppColors.success : AppColors.primary,
             ),
             SizedBox(width: 8),
-            Text(success ? 'Pembayaran Berhasil' : 'Status Pembayaran'),
+            Expanded(
+              child: Text(
+                success ? 'Pembayaran Berhasil' : 'Status Pembayaran',
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -119,7 +134,7 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
               Navigator.pop(ctx);
               context.go('/home');
             },
-            child: const Text('Kembali ke Beranda'),
+            child: const Text('Selesai'),
           ),
         ],
       ),
@@ -162,18 +177,41 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false,
+      canPop: _allowExit,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         final exit = await _onWillPop();
         if (exit && context.mounted) {
-          context.pop();
+          setState(() => _allowExit = true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) context.pop();
+          });
         }
       },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Pembayaran Midtrans'),
           actions: [
+            IconButton(
+              tooltip: 'Periksa status',
+              icon: const Icon(Icons.fact_check_outlined),
+              onPressed: _handlePaymentFinished,
+            ),
+            IconButton(
+              tooltip: 'Buka di browser',
+              icon: const Icon(Icons.open_in_browser),
+              onPressed: () async {
+                try {
+                  final opened = await launchUrl(
+                    Uri.parse(widget.paymentUrl),
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!opened && mounted) setState(() => _loadFailed = true);
+                } catch (_) {
+                  if (mounted) setState(() => _loadFailed = true);
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
               onPressed: () => _controller.reload(),
@@ -183,6 +221,26 @@ class _PaymentWebviewScreenState extends State<PaymentWebviewScreen> {
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
+            if (_loadFailed)
+              Center(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Halaman pembayaran belum dapat dimuat. Periksa koneksi atau buka di browser.',
+                        ),
+                        TextButton(
+                          onPressed: () => _controller.reload(),
+                          child: const Text('Coba lagi'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             if (_isLoading)
               LinearProgressIndicator(
                 value: _progress / 100.0,

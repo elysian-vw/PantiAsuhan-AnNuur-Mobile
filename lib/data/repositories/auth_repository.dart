@@ -17,6 +17,7 @@ class AuthRepository {
     );
     final response = LoginResponse.fromJson(body);
     await AuthStorage.saveToken(response.token);
+    await AuthStorage.saveOwnerId(response.user.id);
     return response;
   }
 
@@ -60,7 +61,7 @@ class AuthRepository {
     );
   }
 
-    static Future<Map<String, dynamic>> register({
+  static Future<Map<String, dynamic>> register({
     required String name,
     required String whatsapp,
     required String email,

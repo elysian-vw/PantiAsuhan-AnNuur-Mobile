@@ -33,6 +33,8 @@ class _Transparency extends TransparencyProvider {
     totalPemasukanFormatted: 'Rp 120.000.000',
     totalPengeluaranFormatted: 'Rp 80.000.000',
     saldoFormatted: 'Rp 40.000.000',
+    isProvisional: true,
+    unknownFeeCount: 12,
   );
 }
 

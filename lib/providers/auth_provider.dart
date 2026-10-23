@@ -1,14 +1,39 @@
 // lib/providers/auth_provider.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:annuur_mobile/core/services/auth_storage.dart';
 import 'package:annuur_mobile/core/services/api_client.dart';
 import 'package:annuur_mobile/data/models/auth_models.dart';
 import 'package:annuur_mobile/data/repositories/auth_repository.dart';
 
-enum AuthStatus { initial, authenticated, unauthenticated }
+enum AuthStatus { initial, unavailable, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
+  late final Future<void> Function() _expiryHandler;
+  AuthProvider() {
+    _expiryHandler = expireSession;
+    ApiClient.onUnauthorized = _expiryHandler;
+  }
+
+  @override
+  void dispose() {
+    if (identical(ApiClient.onUnauthorized, _expiryHandler)) {
+      ApiClient.onUnauthorized = null;
+    }
+    super.dispose();
+  }
+
+  Future<void> expireSession() async {
+    await AuthStorage.deleteToken();
+    _user = null;
+    _donor = null;
+    _status = AuthStatus.unauthenticated;
+    notifyListeners();
+  }
+
   AuthStatus _status = AuthStatus.initial;
   UserModel? _user;
   DonaturModel? _donor;
@@ -34,19 +59,30 @@ class AuthProvider extends ChangeNotifier {
 
   /// Called once on app start to restore session
   Future<void> initialize() async {
+    _error = null;
+    _status = AuthStatus.initial;
+    notifyListeners();
     final hasToken = await AuthStorage.hasToken();
     if (hasToken) {
       try {
         final body = await AuthRepository.getProfile();
         final data = body;
         _user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+        await AuthStorage.saveOwnerId(_user!.id);
         _donor = data['donor'] != null
             ? DonaturModel.fromJson(data['donor'] as Map<String, dynamic>)
             : null;
         _status = AuthStatus.authenticated;
+      } on ApiException catch (e) {
+        if (e.statusCode == 401) {
+          await expireSession();
+        } else {
+          _status = AuthStatus.unavailable;
+          _error = 'Sesi belum dapat diperiksa. Periksa koneksi dan coba lagi.';
+        }
       } catch (_) {
-        await AuthStorage.deleteToken();
-        _status = AuthStatus.unauthenticated;
+        _status = AuthStatus.unavailable;
+        _error = 'Koneksi belum tersedia. Sesi Anda tetap tersimpan.';
       }
     } else {
       _status = AuthStatus.unauthenticated;
@@ -70,8 +106,15 @@ class AuthProvider extends ChangeNotifier {
           ? 'Layanan login tidak ditemukan. Periksa alamat API dan koneksi ke server.'
           : e.message;
       _status = AuthStatus.unauthenticated;
-    } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+    } on TimeoutException {
+      _error = 'Server terlalu lama merespons. Silakan coba masuk lagi.';
+      _status = AuthStatus.unauthenticated;
+    } on http.ClientException {
+      _error =
+          'Tidak dapat terhubung ke server. Periksa koneksi dan coba lagi.';
+      _status = AuthStatus.unauthenticated;
+    } catch (_) {
+      _error = 'Login belum berhasil. Silakan coba lagi.';
       _status = AuthStatus.unauthenticated;
     } finally {
       _setLoading(false);

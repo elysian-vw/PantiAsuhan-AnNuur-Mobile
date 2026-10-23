@@ -1,0 +1,6 @@
+# Copy to key.properties; never commit real secrets or the keystore.
+# storeFile is relative to android/, or an absolute path with forward slashes.
+storeFile=release-keystore.jks
+storePassword=REPLACE_LOCALLY
+keyAlias=REPLACE_LOCALLY
+keyPassword=REPLACE_LOCALLY

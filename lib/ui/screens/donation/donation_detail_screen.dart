@@ -1,7 +1,7 @@
 // lib/ui/screens/donation/donation_detail_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:annuur_mobile/ui/screens/payment/open_payment.dart';
 import 'package:provider/provider.dart';
 import 'package:annuur_mobile/core/services/api_client.dart';
 import 'package:annuur_mobile/core/theme/app_theme.dart';
@@ -146,12 +146,11 @@ class _DonationDetailScreenState extends State<DonationDetailScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _cancelling = false);
-        final msg = e is ApiException ? e.message : 'Gagal membatalkan donasi: $e';
+        final msg = e is ApiException
+            ? e.message
+            : 'Gagal membatalkan donasi: $e';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text(msg), backgroundColor: AppColors.error),
         );
       }
     }
@@ -340,13 +339,7 @@ class _DonationDetailScreenState extends State<DonationDetailScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => context.push(
-                    '/home/pay',
-                    extra: {
-                      'url': d.payment!.paymentUrl!,
-                      'donationId': d.id.toString(),
-                    },
-                  ),
+                  onPressed: () => openDonationPayment(context, d.id),
                   icon: const Icon(Icons.payment_rounded, color: Colors.white),
                   label: const Text('Lanjutkan Pembayaran via Midtrans'),
                 ),
@@ -356,8 +349,9 @@ class _DonationDetailScreenState extends State<DonationDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed:
-                    (_checkingStatus || _cancelling) ? null : _checkPaymentStatus,
+                onPressed: (_checkingStatus || _cancelling)
+                    ? null
+                    : _checkPaymentStatus,
                 icon: _checkingStatus
                     ? const SizedBox(
                         width: 16,
@@ -376,8 +370,9 @@ class _DonationDetailScreenState extends State<DonationDetailScreen> {
                   foregroundColor: AppColors.error,
                   side: const BorderSide(color: AppColors.error),
                 ),
-                onPressed:
-                    (_checkingStatus || _cancelling) ? null : _confirmCancel,
+                onPressed: (_checkingStatus || _cancelling)
+                    ? null
+                    : _confirmCancel,
                 icon: _cancelling
                     ? const SizedBox(
                         width: 16,

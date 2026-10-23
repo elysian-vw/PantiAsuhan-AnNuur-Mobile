@@ -156,6 +156,11 @@ class _HomeTabState extends State<HomeTab> {
               ),
               const SizedBox(height: 18),
               if (cashflow != null) ...[
+                if (cashflow.isProvisional)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(cashflow.calculationNotice),
+                  ),
                 Text('Saldo berjalan', style: AppTextStyles.bodyMedium),
                 const SizedBox(height: 4),
                 Text(

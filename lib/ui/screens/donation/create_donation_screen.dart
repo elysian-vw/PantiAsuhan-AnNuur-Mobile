@@ -68,11 +68,7 @@ class _CreateDonationScreenState extends State<CreateDonationScreen> {
       return;
     }
 
-    final nominal =
-        int.tryParse(
-          _nominalController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-        ) ??
-        0;
+    final nominal = int.tryParse(_nominalController.text.trim()) ?? 0;
 
     if (nominal < AppConfig.minimumNominal) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +101,11 @@ class _CreateDonationScreenState extends State<CreateDonationScreen> {
       if (paymentUrl != null && paymentUrl.isNotEmpty) {
         context.pushReplacement(
           '/home/pay',
-          extra: {'url': paymentUrl, 'donationId': donationId.toString()},
+          extra: {
+            'url': paymentUrl,
+            'donationId': donationId.toString(),
+            'returnUrl': payment['return_url'] as String? ?? '',
+          },
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -289,11 +289,12 @@ class _CreateDonationScreenState extends State<CreateDonationScreen> {
                   if (v == null || v.isEmpty) {
                     return 'Nominal donasi wajib diisi';
                   }
-                  final parsed = int.tryParse(
-                    v.replaceAll(RegExp(r'[^0-9]'), ''),
-                  );
+                  final parsed = int.tryParse(v.trim());
                   if (parsed == null || parsed < AppConfig.minimumNominal) {
                     return 'Minimal donasi ${Formatters.currency(AppConfig.minimumNominal)}';
+                  }
+                  if (parsed > 999999999) {
+                    return 'Maksimal donasi Rp999.999.999';
                   }
                   return null;
                 },
@@ -306,6 +307,7 @@ class _CreateDonationScreenState extends State<CreateDonationScreen> {
               TextFormField(
                 controller: _catatanController,
                 maxLines: 3,
+                maxLength: 500,
                 decoration: const InputDecoration(
                   hintText: 'Tuliskan niat donasi, doa, atau pesan untuk anak-anak panti...',
                 ),

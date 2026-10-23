@@ -1,11 +1,11 @@
 // lib/ui/screens/donation/donation_history_tab.dart
 
 import 'package:flutter/material.dart';
+import 'package:annuur_mobile/ui/screens/payment/open_payment.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:annuur_mobile/core/theme/app_theme.dart';
 import 'package:annuur_mobile/core/utils/formatters.dart';
-import 'package:annuur_mobile/data/models/donation_models.dart';
 import 'package:annuur_mobile/providers/donation_provider.dart';
 
 class DonationHistoryTab extends StatefulWidget {
@@ -17,7 +17,6 @@ class DonationHistoryTab extends StatefulWidget {
 
 class _DonationHistoryTabState extends State<DonationHistoryTab> {
   final _scrollController = ScrollController();
-  String _selectedFilter = 'Semua';
 
   @override
   void initState() {
@@ -38,21 +37,11 @@ class _DonationHistoryTabState extends State<DonationHistoryTab> {
     }
   }
 
-  List<DonationModel> _getFilteredDonations(List<DonationModel> all) {
-    if (_selectedFilter == 'Berhasil') {
-      return all.where((d) => d.isSuccess).toList();
-    }
-    if (_selectedFilter == 'Menunggu') {
-      return all.where((d) => d.isPending).toList();
-    }
-    return all;
-  }
-
   @override
   Widget build(BuildContext context) {
     final donation = context.watch<DonationProvider>();
     final summary = donation.summary;
-    final filteredList = _getFilteredDonations(donation.donations);
+    final filteredList = donation.donations;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -132,16 +121,19 @@ class _DonationHistoryTabState extends State<DonationHistoryTab> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: ['Semua', 'Berhasil', 'Menunggu'].map((f) {
-                  final isSelected = _selectedFilter == f;
+                  final status = f == 'Semua'
+                      ? null
+                      : f == 'Menunggu'
+                      ? 'Menunggu pembayaran'
+                      : f;
+                  final isSelected = donation.statusFilter == status;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
                       selected: isSelected,
                       label: Text(f),
                       onSelected: (_) {
-                        setState(() {
-                          _selectedFilter = f;
-                        });
+                        donation.setStatusFilter(status);
                       },
                       selectedColor: AppColors.primary,
                       labelStyle: TextStyle(
@@ -162,6 +154,22 @@ class _DonationHistoryTabState extends State<DonationHistoryTab> {
               ),
             ),
             const SizedBox(height: 12),
+            if (donation.historyError != null)
+              TextButton(
+                onPressed: () =>
+                    donation.loadDonations(refresh: filteredList.isEmpty),
+                child: Text(
+                  '${donation.historyError} Ketuk untuk mencoba lagi.',
+                ),
+              ),
+            if (donation.donationsLoading) const LinearProgressIndicator(),
+            if (donation.hasMore &&
+                !donation.donationsLoading &&
+                !donation.loadingMore)
+              TextButton(
+                onPressed: donation.loadMore,
+                child: const Text('Muat berikutnya'),
+              ),
 
             // Donations List
             Expanded(
@@ -304,12 +312,9 @@ class _DonationHistoryTabState extends State<DonationHistoryTab> {
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
                                         TextButton.icon(
-                                          onPressed: () => context.push(
-                                            '/home/pay',
-                                            extra: {
-                                              'url': d.payment!.paymentUrl!,
-                                              'donationId': d.id.toString(),
-                                            },
+                                          onPressed: () => openDonationPayment(
+                                            context,
+                                            d.id,
                                           ),
                                           icon: const Icon(
                                             Icons.payment_rounded,

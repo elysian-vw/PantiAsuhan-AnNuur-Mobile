@@ -15,6 +15,10 @@ class DonationProvider extends ChangeNotifier {
   int _currentPage = 1;
   int _lastPage = 1;
   bool _loadingMore = false;
+  String? _statusFilter;
+  String? _historyError;
+  int _requestVersion = 0;
+  bool _disposed = false;
 
   // Summary
   DonationSummaryModel? _summary;
@@ -30,7 +34,28 @@ class DonationProvider extends ChangeNotifier {
   List<DonationModel> get donations => _donations;
   bool get donationsLoading => _donationsLoading;
   bool get loadingMore => _loadingMore;
-  bool get hasMore => _currentPage < _lastPage;
+  bool get hasMore => _currentPage <= _lastPage;
+  String? get historyError => _historyError;
+  String? get statusFilter => _statusFilter;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _requestVersion++;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  Future<void> setStatusFilter(String? status) async {
+    if (_statusFilter == status) return;
+    _statusFilter = status;
+    await loadDonations(refresh: true);
+  }
+
   DonationSummaryModel? get summary => _summary;
   bool get summaryLoading => _summaryLoading;
   bool get creating => _creating;
@@ -57,17 +82,23 @@ class DonationProvider extends ChangeNotifier {
   }
 
   Future<void> loadDonations({bool refresh = false}) async {
-    if (_donationsLoading) return;
+    if (_disposed || (!refresh && (_donationsLoading || _loadingMore))) return;
+    final version = ++_requestVersion;
     if (refresh) {
       _currentPage = 1;
       _donations = [];
     }
     _donationsLoading = refresh;
-    if (!refresh) _loadingMore = true;
+    _historyError = null;
+    _loadingMore = !refresh;
     notifyListeners();
 
     try {
-      final result = await DonationRepository.getDonations(page: _currentPage);
+      final result = await DonationRepository.getDonations(
+        page: _currentPage,
+        status: _statusFilter,
+      );
+      if (_disposed || version != _requestVersion) return;
       if (refresh) {
         _donations = result.data;
       } else {
@@ -75,7 +106,11 @@ class DonationProvider extends ChangeNotifier {
       }
       _currentPage = result.currentPage + 1;
       _lastPage = result.lastPage;
-    } catch (_) {}
+    } catch (_) {
+      if (_disposed || version != _requestVersion) return;
+      _historyError =
+          'Riwayat belum dapat dimuat. Periksa koneksi dan coba lagi.';
+    }
 
     _donationsLoading = false;
     _loadingMore = false;
@@ -92,6 +127,7 @@ class DonationProvider extends ChangeNotifier {
     required int nominal,
     String? catatan,
   }) async {
+    if (_creating || _disposed) return null;
     _creating = true;
     _createError = null;
     notifyListeners();

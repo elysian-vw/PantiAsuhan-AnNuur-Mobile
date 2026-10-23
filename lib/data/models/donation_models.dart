@@ -100,7 +100,7 @@ class DonationModel {
   bool get isPending => status == 'Menunggu pembayaran';
   bool get isFailed => status == 'Gagal' || status == 'Kedaluwarsa';
   bool get isCancelled => status == 'Dibatalkan';
-  bool get canPay => isPending && payment?.paymentUrl != null;
+  bool get canPay => isPending && payment != null;
   bool get canCancel => isPending;
 }
 

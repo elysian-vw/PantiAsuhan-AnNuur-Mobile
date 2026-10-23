@@ -24,7 +24,7 @@ class AppConfig {
   static const String tokenKey = 'donor_api_token';
 
   /// Minimum donation amount (IDR)
-  static const int minimumNominal = 10000;
+  static const int minimumNominal = 5000;
 
   /// Preset donation amounts (IDR)
   static const List<int> nominalPresets = [

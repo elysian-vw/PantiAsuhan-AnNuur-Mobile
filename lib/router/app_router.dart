@@ -27,7 +27,7 @@ class AppRouter {
         final isAtLogin = state.matchedLocation == '/login';
         final isAtRegister = state.matchedLocation == '/register';
 
-        if (status == AuthStatus.initial) {
+        if (status == AuthStatus.initial || status == AuthStatus.unavailable) {
           return isAtSplash ? null : '/';
         }
         if (status == AuthStatus.unauthenticated) {
@@ -68,6 +68,7 @@ class AppRouter {
                 final extra = state.extra as Map<String, String>;
                 return PaymentWebviewScreen(
                   paymentUrl: extra['url']!,
+                  returnUrl: extra['returnUrl'],
                   donationId: int.parse(extra['donationId']!),
                 );
               },
